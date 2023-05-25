@@ -178,7 +178,7 @@ def get_chunk(downloader):
                 downloader.stop()
             except:
                 pass
-            break
+            return
         yield chunk
 
 @app.route('/proxy_preview_m3u8')
