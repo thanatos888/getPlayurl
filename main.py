@@ -126,9 +126,9 @@ def proxy_download_file():
     if connection is None:
         connection = 1
     if subt is None:
-        oldapi = True
-    else:
         oldapi = False
+    else:
+        oldapi = True
     params = b64decode(params).decode("utf-8").replace('\'', '\"')
     params = json.loads(params)
     downloader_switch = params['downloader_switch'] if 'downloader_switch' in params else None
