@@ -219,7 +219,7 @@ def proxy_download_file():
                     continue
                 value = res_headers[key]
                 cxt_headers[key] = value
-            return Response(get_chunk(downloader), status_code, cxtheaders)
+            return Response(get_chunk(downloader), status_code, cxt_headers)
         except:
             try:
                 downloader.stop()
