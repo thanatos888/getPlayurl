@@ -6,6 +6,7 @@ import random
 import hashlib
 import requests
 from base64 import b64encode
+from collections import OrderedDict
 from cache import get_cache, set_cache, del_cache
 
 base_headers = {
@@ -92,10 +93,14 @@ class AliyunDrive():
         items = []
 
         for dir_info in dir_infos:
+            name = dir_info['name']
+            if len(name) > len(parent_item['name'].split('：', 1)[-1]) + 8:
+                name = ''.join(OrderedDict.fromkeys(name))
             items.append({
                 'type': 'directory',
                 'id': 'https://www.aliyundrive.com/s/{}/folder/{}'.format(share_id, dir_info['file_id']),
-                'name': dir_info['name'],
+                'name': name,
+                'description': '阿里分享链接：\n' + parent_item['id'],
                 'cover': share_info['avatar'],
                 'params': {
                     'pf': 'ali',
@@ -199,22 +204,26 @@ class AliyunDrive():
 
         headers['authorization'] = authorization
         url = 'https://open.aliyundrive.com/oauth/users/authorize?client_id=76917ccccd4441c39457a04f6084fb2f&redirect_uri=https://alist.nn.ci/tool/aliyundrive/callback&scope=user:base,file:all:read,file:all:write&state='
-        r = requests.post(url,
-                          json={
-                              'authorize': 1,
-                              'scope': 'user:base,file:all:read,file:all:write'
-                          },
-                          headers=headers)
-        code = re.search(r'code=(.*?)\"', r.text).group(1)
-        r = requests.post('https://api.nn.ci/alist/ali_open/code',
-                          json={
-                              'code': code,
-                              'grant_type': 'authorization_code'
-                          },
-                          headers=headers)
-
-        opdata = json.loads(r.text)
         try:
+            r = requests.post(url,
+                              json={
+                                  'authorize': 1,
+                                  'scope': 'user:base,file:all:read,file:all:write'
+                              },
+                              headers=headers,
+                              timeout=10)
+            code = re.search(r'code=(.*?)\"', r.text).group(1)
+
+            del headers['Referer']
+
+            r = requests.post('https://api.nn.ci/alist/ali_open/code',
+                              json={
+                                  'code': code,
+                                  'grant_type': 'authorization_code'
+                              },
+                              headers=headers,
+                              timeout=10)
+            opdata = json.loads(r.text)
             opentoken = opdata['refresh_token']
             opauthorization = '{} {}'.format(opdata['token_type'], opdata['access_token'])
         except:
@@ -396,12 +405,6 @@ class AliyunDrive():
                 preview_url = t['url']
                 break
 
-        r = requests.get(preview_url,
-                         headers=base_headers.copy(),
-                         allow_redirects=False,
-                         verify=False)
-        preview_url = r.headers['Location']
-
         lines = []
         media_urls = []
         r = requests.get(preview_url,
@@ -507,9 +510,7 @@ class AliyunDrive():
                 json={'share_id': share_id, 'file_id': file_id, 'expires_sec': 7200},
                 headers=headers,
                 verify=False)
-            data = r.json()
-            r = requests.get(data['download_url'], headers=base_headers.copy(), allow_redirects=False, verify=False)
-            download_url = r.headers['Location']
+            download_url = r.json()['url']
 
         self._set_cache(
             key, {
@@ -540,4 +541,3 @@ class AliyunDrive():
 
     def _del_cache(self, key):
         del_cache(key)
-
